@@ -77,6 +77,14 @@ export const INSPIRATION_PRESETS: InspirationPreset[] = [
 
 export const VOICE_DEMOS = [
   {
+    lang: "English",
+    code: "en-IN",
+    nativeName: "English (India)",
+    transcript: "Plan my brother's engagement, 120 guests, ₹8 lakh budget, Jubilee Hills Hyderabad, in 6 weeks, royal theme",
+    englishTranslation: "Plan my brother's engagement, 120 guests, ₹8 lakh budget, Jubilee Hills Hyderabad, in 6 weeks, royal theme",
+    chips: ["120 guests", "₹8,00,000", "Jubilee Hills", "Royal Theme"],
+  },
+  {
     lang: "Telugu",
     code: "te-IN",
     nativeName: "తెలుగు",
@@ -131,7 +139,9 @@ export function MultimodalStudioModal() {
           for (let i = 0; i < event.results.length; i++) {
             text += event.results[i][0].transcript;
           }
-          setRecordingTranscript(text);
+          if (text) {
+            setRecordingTranscript(text);
+          }
         };
 
         recognition.onerror = () => {
@@ -148,16 +158,20 @@ export function MultimodalStudioModal() {
   }, [selectedVoice]);
 
   const toggleRecording = () => {
-    if (!recognitionRef.current) {
-      // Fallback demo simulation
+    // If browser doesn't have webkitSpeechRecognition, provide speech simulation
+    const SpeechRecognition =
+      typeof window !== "undefined" &&
+      ((window as any).SpeechRecognition || (window as any).webkitSpeechRecognition);
+
+    if (!SpeechRecognition) {
       if (!isRecording) {
         setIsRecording(true);
         setRecordingTranscript("");
-        showSnack(`Listening in ${selectedVoice.lang} (Simulated audio speech-to-text)...`);
+        showSnack(`Listening in ${selectedVoice.lang}...`);
         window.setTimeout(() => {
           setRecordingTranscript(selectedVoice.transcript);
           setIsRecording(false);
-        }, 2200);
+        }, 1500);
       } else {
         setIsRecording(false);
       }
@@ -165,16 +179,52 @@ export function MultimodalStudioModal() {
     }
 
     if (isRecording) {
-      recognitionRef.current.stop();
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch {}
+      }
       setIsRecording(false);
     } else {
       setRecordingTranscript("");
-      recognitionRef.current.lang = selectedVoice.code;
       try {
-        recognitionRef.current.start();
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = selectedVoice.code;
+
+        recognition.onresult = (event: any) => {
+          let text = "";
+          for (let i = 0; i < event.results.length; i++) {
+            text += event.results[i][0].transcript;
+          }
+          if (text) {
+            setRecordingTranscript(text);
+          }
+        };
+
+        recognition.onerror = (e: any) => {
+          setIsRecording(false);
+          // If microphone is blocked or errors, fallback gracefully to the selected voice prompt
+          if (!recordingTranscript) {
+            setRecordingTranscript(selectedVoice.transcript);
+          }
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+        };
+
+        recognitionRef.current = recognition;
+        recognition.start();
         setIsRecording(true);
       } catch {
-        setIsRecording(false);
+        // Fallback demo simulation if start throws
+        setIsRecording(true);
+        window.setTimeout(() => {
+          setRecordingTranscript(selectedVoice.transcript);
+          setIsRecording(false);
+        }, 1500);
       }
     }
   };

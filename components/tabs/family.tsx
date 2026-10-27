@@ -35,8 +35,16 @@ export function FamilyTab() {
   };
 
   const shareWhatsApp = () => {
+    // Generate multi-lingual invitation bundle or current selected language
+    const currentLangText = `🙏 ${eInvite.blessingText}\n\n${eInvite.invitationText}`;
+    
+    // Also include English summary so all family members can understand
+    const englishSummary = eInvite.language !== "en"
+      ? `\n\n[English Translation]\nTogether with our families, ${eInvite.hostNames} invite you to celebrate the Engagement Ceremony.\n`
+      : "";
+
     const text = encodeURIComponent(
-      `🙏 ${eInvite.blessingText}\n\n${eInvite.invitationText}\n\n📅 Date: ${formatDate(brief.date)}\n⏰ Time: ${eInvite.muhurthamTime}\n📍 Venue: ${eInvite.venueName}\n\nVote on our family preferences & view the e-invite here: ${window.location.href}`
+      `${currentLangText}${englishSummary}\n📅 Date: ${formatDate(brief.date)}\n⏰ Time: ${eInvite.muhurthamTime}\n📍 Venue: ${eInvite.venueName}\n\nVote on our family preferences & view the living e-invite here: ${window.location.href}`
     );
     window.open(`https://api.whatsapp.com/send?text=${text}`, "_blank");
   };
@@ -76,14 +84,35 @@ export function FamilyTab() {
             </div>
           </div>
 
-          <div className="row gap-8">
+          <div className="row gap-8" style={{ flexWrap: "wrap" }}>
+            <div className="row gap-4" style={{ alignItems: "center" }}>
+              <span className="caption muted" style={{ fontWeight: 600 }}>
+                Share Language:
+              </span>
+              {(
+                [
+                  { code: "te", label: "Telugu" },
+                  { code: "hi", label: "Hindi" },
+                  { code: "en", label: "English" },
+                ] as const
+              ).map((lang) => (
+                <button
+                  key={lang.code}
+                  type="button"
+                  className={`chip chip--action chip--xs ${eInvite.language === lang.code ? "chip--active" : ""}`}
+                  onClick={() => setInviteLanguage(lang.code as InviteLanguage)}
+                >
+                  {lang.label}
+                </button>
+              ))}
+            </div>
             <button type="button" className="btn btn--outlined btn--sm" onClick={copyShareLink}>
               <Icon name="share" size={16} />
-              Share Voting Link
+              Copy Voting Link
             </button>
             <button type="button" className="btn btn--filled btn--sm" onClick={shareWhatsApp}>
               <Icon name="chat" size={16} />
-              Share to WhatsApp
+              Share on WhatsApp
             </button>
           </div>
         </div>
